@@ -74,7 +74,12 @@ map<UINT, LPCTSTR> menuData = {
 };
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	static UINT s_uTaskbarRestart;
+
 	switch (message) {
+	case WM_CREATE:
+		s_uTaskbarRestart = RegisterWindowMessage(_T("TaskbarCreated"));
+		break;
 	case WM_USER+2019:
 		AppDelegate::getInstance()->onControlPanel();
 		break;
@@ -159,9 +164,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	}
 	break;
 	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+		if (message == s_uTaskbarRestart) {
+			SystemTrayHelper::createSystemTrayIcon(GetModuleHandleA(NULL));
+			SystemTrayHelper::updateData();
+		}
+
+		break;
 	}
-	return 0;
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 HWND SystemTrayHelper::createFakeWindow(const HINSTANCE & hIns) {
