@@ -46,11 +46,18 @@ redistribute your new version, it MUST be open source.
 											COMMAND, \
 											menuData[COMMAND]);
 
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+
+static const UINT WM_TASKBAR_CREATED = RegisterWindowMessage(_T("TaskbarCreated"));
+
 static HMENU popupMenu;
 //static HMENU menuInputType;
 static HMENU otherCode;
 
 static NOTIFYICONDATA nid;
+
+static HINSTANCE ins;
+static int recreateCount = 0;
 
 map<UINT, LPCTSTR> menuData = {
 	{POPUP_VIET_ON_OFF, _T("Bật Tiếng Việt")},
@@ -72,6 +79,10 @@ map<UINT, LPCTSTR> menuData = {
 	{POPUP_ABOUT_OPENKEY, _T("Giới thiệu OpenKey")},
 	{POPUP_OPENKEY_EXIT, _T("Thoát")},
 };
+
+static HMODULE GetCurrentModuleHandle() {
+	return ((HMODULE)&__ImageBase);
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
@@ -159,9 +170,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	}
 	break;
 	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+		if (message == WM_TASKBAR_CREATED) {
+			SystemTrayHelper::createSystemTrayIcon(GetCurrentModuleHandle());
+		}
+
+		break;
 	}
-	return 0;
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 HWND SystemTrayHelper::createFakeWindow(const HINSTANCE & hIns) {
@@ -304,13 +320,10 @@ void SystemTrayHelper::updateData() {
 	ModifyMenu(popupMenu, POPUP_QUICK_CONVERT, MF_BYCOMMAND | MF_UNCHECKED, POPUP_QUICK_CONVERT, hotKeyString.c_str());
 }
 
-static HINSTANCE ins;
-static int recreateCount = 0;
-
 void SystemTrayHelper::_createSystemTrayIcon(const HINSTANCE& hIns) {
 	HWND hWnd = createFakeWindow(ins);
 	
-	if (hWnd == NULL) { //Use timer to create
+	if (hWnd == NULL) { // Use timer to create
 		if (recreateCount >= 5) {
 			PostQuitMessage(0);
 			return;
