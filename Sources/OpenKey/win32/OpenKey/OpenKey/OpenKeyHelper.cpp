@@ -92,12 +92,18 @@ BYTE * OpenKeyHelper::getRegBinary(LPCTSTR key, DWORD& outSize) {
 }
 
 void OpenKeyHelper::registerRunOnStartup(const int& val) {
+	STARTUPINFO si = { sizeof(STARTUPINFO) };
+	PROCESS_INFORMATION pi;
+
 	if (val) {
 		if (vRunAsAdmin) {
 			string path = wideStringToUtf8(getFullPath());
-			char buff[MAX_PATH];
-			sprintf_s(buff, "schtasks /create /sc onlogon /tn OpenKey /rl highest /tr \"%s\" /f", path.c_str());
-			WinExec(buff, SW_HIDE);
+			TCHAR cmdLine[] = _T("schtasks /create /sc onlogon /tn OpenKey /rl highest /tr \"%s\" /f");
+
+			if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+				CloseHandle(pi.hProcess);
+				CloseHandle(pi.hThread);
+			}
 		} else {
 			RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &hKey);
 			wstring path = getFullPath();
@@ -108,7 +114,13 @@ void OpenKeyHelper::registerRunOnStartup(const int& val) {
 		RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &hKey);
 		RegDeleteValue(hKey, _T("OpenKey"));
 		RegCloseKey(hKey);
-		WinExec("schtasks /delete  /tn OpenKey /f", SW_HIDE);
+
+		TCHAR cmdLine[] = _T("schtasks /delete  /tn OpenKey /f");
+
+		if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+		}
 	}
 }
 
